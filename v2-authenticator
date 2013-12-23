@@ -1,0 +1,134 @@
+-- Trim Whitespace from beginning and end of string
+function trim(text)
+  while string.sub(text,1,1) == " " do -- Strip spaces from beginning of line
+    text = string.gsub(text , "^%s", "")
+  end
+  while string.sub(text:reverse(),1,1) == " " do -- Strip spaces from end of line
+    text = string.gsub(text , "%s$", "")
+  end
+  return text
+end
+
+-- Convert String to equvalent Boolean value
+function string2boolean(input) 
+  output = false
+  if string.lower(input) == "true" or input == "1" then
+    output = true
+  elseif string.lower(input) == "false" or input == "0" then
+    output = false
+  else
+    error("Not appropriate boolean value")
+  end
+  return output
+end
+
+-- Remove Comments, Blanklines, and excess Whitespace, then separates the remaining Lines into a table
+function parseLines(text)
+  commentChar = "#"
+  i = 0
+  parsed = {}
+  for line in text:lines() do
+    if string.find(line, commentChar) then --Removes Comments (Including inline comments)
+      line = string.sub(line,1, string.find(line, commentChar)-1)
+    end
+    line = trim(line)
+    if (string.sub(line,1,1) ~= "") then -- Checks if not blank
+      i=i+1
+      parsed[i] = line
+    end
+  end
+  return parsed
+end
+
+-- Takes table from parseLines(text) and error checks as well as
+-- converts them to 2D table of GamerTags and Passwords
+function parsePasswords(lines)
+  if #lines == 0 then
+    error("Empty passwords file")
+  end
+  parsed = {}
+  i = 0
+  for k,v in pairs(lines) do
+      i=i+1
+      parsed[i] = {}
+      if string.find(v, "\"") then -- Checks if quotes are present (anything outside quotes is considered username)
+        if string.find(v, "\"", string.find(v, "\"")+1) then --Error Check that there are two quotes
+          parsed[i][1] = trim(string.sub(v,string.find(v,"\"")+1,v:len()-string.find(v:reverse(),"\""))) -- Substring between quotes, trimmed
+          parsed[i][2] = trim(string.sub(v,v:len()-string.find(v:reverse(),"\"")+2)) -- Substring after quotes, trimmed
+        else
+          error("Missing \" in passwords file at Password: "..k)
+        end
+      elseif string.find(v, " ") then -- Checks if there is space string, last "word" is considered username
+        parsed[i][1] = trim(string.sub(v,1,v:len()-string.find(v:reverse()," "))) -- Substring before space, trimmed
+        parsed[i][2] = trim(string.sub(v,v:len()-string.find(v:reverse()," ")+2)) -- Substring after space, trimmed
+      else -- Enire string is considered password
+        parsed[i][1] = trim(v) -- String is password, trimmed
+        parsed[i][2] = ""
+      end
+  end
+  return parsed
+end
+
+-- Takes table from parseLines(text) and finds mode/info for main program
+function parseSettings(lines)
+  if #lines == 0 then
+    error("Empty settings file")
+  end
+  if lines[1] == "login" then
+    if #lines == 3 then
+      lines[3] = string2boolean(lines[3])
+    else
+      error("Incorrect number of settings arguments")
+    end
+  elseif lines[1] == "redstone" then
+    if #lines == 5 then
+      lines[3] = string2boolean(lines[3])
+      lines[4] = string2boolean(lines[4])
+      lines[5] = string2boolean(lines[5])
+    else
+      error("Incorrect number of settings arguments")
+    end
+  end
+  
+  return lines
+end
+----------------End of Function Declarations----------------
+origPullEvent = os.pullEvent
+os.pullEvent = os.pullEventRaw --disables the ability to reboot
+
+local currPath = string.sub(shell.getRunningProgram(),1,shell.getRunningProgram():len()-(string.find(shell.getRunningProgram():reverse(),"/")-1))
+
+local passPath = currPath.."passwords" -- Open and Parse Passwords database (or creates passwords file)
+if not fs.exists(passPath) then -- Create passwords file if it doesn't already exist and save default setup info in it
+  local passFile = io.open(passPath, "w")
+  passFile:write("# Chrunches (#) denote config file comments\n# Chrunches can be put in a line to denote end of line comment\n\n# Spaces at the beginning or end of a passphrase (even inside the quotes) will be removed\n# EX: \"  pass \" will become \"pass\"\n\n# Quotes are only placed around the passkey and should not be present on the keycard\n# Quotes are not nessicary, however if you want a multi-word passkey and don't put a username such as:\n# My Awesome Key\n# then My Awesome would be the passkey and Key would be the username\n\n# Valid password examples:\n# \"1234\" John #Comment Here!\n# Jimmy Hendrix Markus #Markus is the username\n# 5678 Doe\n# \"My awesome PassPhrase\" Jane\n# Password22 #No username\n# \"superSecurePassKey ofUtterAwesomeness\" #Also No username")
+  passFile:close()
+end
+passFile = io.open(passPath,"r")
+local passwords = parsePasswords(parseLines(passFile))
+passFile:close()
+
+local settPath = currPath.."settings" -- Open and Parse Settings Config (or creates settings file)
+if not fs.exists(settPath) then -- Create settings file if it doesn't already exist and save default setup info in it
+  local settFile = io.open(settPath, "w")
+  settFile:write()
+  settFile:close()
+end
+settFile = io.open(settPath,"r")
+local settings = parseSettings(parseLines(settFile))
+settFile:close()
+
+
+
+print(#passwords)
+for k,v in pairs(passwords) do
+  print(k,":")
+  for k2, v2 in pairs(v) do
+    print("\t",k2,": ",v2)
+  end
+end
+
+print(#settings)
+for k,v in pairs(settings) do
+  print(k,": ",v)
+end

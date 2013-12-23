@@ -1,0 +1,103 @@
+currPath = string.sub(shell.getRunningProgram(),1,shell.getRunningProgram():len()-(string.find(shell.getRunningProgram():reverse(),"/")-1))
+passPath = currPath.."passwords"
+settPath = currPath.."settings"
+
+passwords = {} --Setup Passwords and Settings tables
+settings = {}
+
+if not fs.exists(passPath) then --Check for Password File, exit if not found
+  print("No Passwords File")    --TODO Make File instead, then let it exit upon finding no passwords
+  return
+else
+  passFile = io.open(passPath,"r")
+    i = 0
+  for line in passFile:lines() do --Move passwords/users into 2D matrix
+    if (string.sub(line,1,1) ~= "#") and (string.sub(line,1,1) ~= "") then --TODO Trim whitespace
+      passwords[i] = {}
+      passwords[i][0] = string.sub(line,1,string.find(line," ")-1) -- Substring before Space
+      passwords[i][1] = string.sub(line,string.find(line, " ")+1) -- Substring after Space
+      i = i+1
+    end
+  end
+  if(i == 0) then --Error Check, less than 1 password
+    print("Empty Passwords File")
+    return
+  end
+  passFile:close()
+end
+print("Finished Passwords")
+if not fs.exists(settPath) then --Check if Settings File Exists, exits if not
+  print("No Settings File")
+  exit()
+else
+  settFile = io.open(settPath,"r")
+  i = 0
+  for line in settFile:lines() do --Check for valids settings
+    if string.sub(line,1,1) ~= "#" or string.sub(line,1,1) ~= "" then
+      settings[i] = line
+      i = i+1
+    end
+  end
+  if i < 4 then --Error Check, 5 Settings
+    print("Incorrect Settings File")
+    return
+  end
+  if settings[3] == "true" then
+    settings[3] = true
+  elseif settings[3] == "false" then
+    settings[3] = false
+  else
+    print("Incorrect Settings File")
+    return
+  end
+  if settings[4] == "true" then
+    settings[4] = true
+  elseif settings[4] == "false" then
+    settings[4] = false
+  else
+    print("Incorrect Settings File")
+    return
+  end
+  settFile:close()
+end
+
+-- terminateEvent = os.pullEvent --Start Program Termination
+-- os.pullEvent = os.pullEventRaw
+print("Finished Init")
+
+-- END INIT! Functions
+
+
+-- END FUNCTIONS! Main Loop
+
+while true do
+  rs.setOutput(settings[0], settings[4])
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Please Insert Card")
+  if disk.isPresent(settings[1]) then
+    valid = false
+    term.clear()
+    term.setCursorPos(1,1)
+    if fs.exists(disk.getMountPath(settings[1]).."/"..settings[2]) then
+      cardFile = fs.open("/"..disk.getMountPath(settings[1]).."/"..settings[2],"r")
+      cardPass = cardFile.readLine()
+      for i=0,table.getn(passwords) do
+        if passwords[i][0] == cardPass then
+          valid = true
+          rs.setOutput(settings[0],settings[3])
+          print("Welcome "..passwords[i][1])
+          -- Somehow put in Shell Here?
+        end
+      end    
+    end
+    if not valid then
+      print("Authentication Failed")
+    end
+    print("Please Remove Card")
+    while disk.isPresent(settings[1]) do
+      os.sleep(.5)
+    end
+  end
+  os.sleep(.5)
+end
