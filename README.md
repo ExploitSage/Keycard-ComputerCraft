@@ -1,4 +1,2 @@
-Keycard
-=======
-
-ComputerCraft Program for using a floppy Disk and Drive as a Keycard authentication system
+# Keycard-ComputerCraft
+Lua ComputerCraft program to use Floppy Drives/Disks as an Authentication System
